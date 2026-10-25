@@ -1,17 +1,18 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: demo-nginx
+  name: http-app
   namespace: argocd
 spec:
   project: default
   source:
-    repoURL: 'https://charts.bitnami.com/bitnami'
-    targetRevision: 15.x.x
-    chart: nginx
+    repoURL: 'git@github.com:steadyphase/example-gitops.git'
+    path: kubernetes/workloads/http-app
+    targetRevision: HEAD
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: default
   syncPolicy:
     automated:
       prune: true
+      selfHeal: true

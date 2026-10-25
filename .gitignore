@@ -1,0 +1,34 @@
+# Local .terraform directories and plugins
+**/.terraform/*
+
+# Terragrunt cache directories (Massive size)
+**/.terragrunt-cache/
+
+# Terraform state files (Contains plaintext secrets - NEVER commit)
+*.tfstate
+*.tfstate.backup
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Terraform variables files (Often contain local testing secrets)
+*.tfvars
+*.tfvars.json
+
+# Ignore overrides
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Kubernetes/Helm local files
+.kube/
+*.kubeconfig
+Chart.lock
+
+# OS and Editor files
+.DS_Store
+.vscode/
+.idea/
+*.swp

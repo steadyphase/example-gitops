@@ -1,22 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: http-server
-  labels:
-    app: http-server
+  name: {{ .Release.Name }}-http-server
 spec:
-  replicas: 2
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: http-server
+      app: {{ .Release.Name }}-http-server
   template:
     metadata:
       labels:
-        app: http-server
+        app: {{ .Release.Name }}-http-server
     spec:
       containers:
         - name: web
-          image: nginx:1.24-alpine
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           ports:
             - containerPort: 80
           resources:

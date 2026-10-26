@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: 'https://github.com/steadyphase/example-gitops.git'
-    path: kubernetes/workloads/http-app
+    path: kubernetes/workloads/http-chart
     targetRevision: HEAD
   destination:
     server: 'https://kubernetes.default.svc'

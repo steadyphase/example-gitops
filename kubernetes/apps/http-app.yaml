@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'git@github.com:steadyphase/example-gitops.git'
+    repoURL: 'https://github.com/steadyphase/example-gitops.git'
     path: kubernetes/workloads/http-app
     targetRevision: HEAD
   destination:

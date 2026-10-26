@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: nginx:this-tag-is-broken-123
+          image: nginx:1.24-alpine
           ports:
             - containerPort: 80
           resources:

@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: qwen-inference
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/steadyphase/example-gitops.git'
+    path: kubernetes/workloads/ai-workload-007
+    targetRevision: HEAD
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

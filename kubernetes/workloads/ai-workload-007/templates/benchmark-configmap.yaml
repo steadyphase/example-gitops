@@ -1,0 +1,79 @@
+{{- if .Values.benchmark.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.fullnameOverride }}-k6-script
+  labels:
+    app.kubernetes.io/name: {{ .Values.fullnameOverride }}
+data:
+  benchmark.js: |
+    import http from 'k6/http';
+    import { Trend, Rate, Counter } from 'k6/metrics';
+
+    const c1Latency = new Trend('c1_latency_ms', true);
+    const c1Success = new Rate('c1_success_rate');
+    const c1Tokens  = new Counter('c1_tokens_total');
+
+    const c4Latency = new Trend('c4_latency_ms', true);
+    const c4Success = new Rate('c4_success_rate');
+    const c4Tokens  = new Counter('c4_tokens_total');
+
+    export const options = {
+        scenarios: {
+            concurrency_1: {
+                executor: 'per-vu-iterations',
+                vus: 1,
+                iterations: {{ .Values.benchmark.iterationsPerVu }},
+    maxDuration: '5m',
+        exec: 'runC1',
+    },
+    concurrency_4: {
+        executor: 'per-vu-iterations',
+            vus: 4,
+            iterations: {{ .Values.benchmark.iterationsPerVu }},
+        startTime: '3m',
+            maxDuration: '8m',
+            exec: 'runC4',
+    },
+    },
+    summaryTrendStats: ['avg', 'min', 'med', 'p(90)', 'p(95)', 'max'],
+    };
+
+    const url = 'http://{{ .Values.fullnameOverride }}-svc:{{ .Values.inference.port }}/v1/chat/completions';
+    const payload = JSON.stringify({
+        model: '{{ .Values.model.name }}',
+        messages: [
+            { role: 'system', content: 'You are a concise systems engineering assistant.' },
+            { role: 'user', content: 'Explain the difference between TCP and UDP in exactly 100 words.' }
+        ],
+        max_tokens: {{ .Values.benchmark.maxTokens }},
+    temperature: 0.0,
+    });
+    const params = { headers: { 'Content-Type': 'application/json' }, timeout: '120s' };
+
+    export function runC1() {
+        const res = http.post(url, payload, params);
+        const ok = res.status === 200;
+        c1Success.add(ok);
+        c1Latency.add(res.timings.duration);
+        if (ok) {
+            const body = JSON.parse(res.body);
+            if (body.usage && body.usage.completion_tokens) {
+                c1Tokens.add(body.usage.completion_tokens);
+            }
+        }
+    }
+
+    export function runC4() {
+        const res = http.post(url, payload, params);
+        const ok = res.status === 200;
+        c4Success.add(ok);
+        c4Latency.add(res.timings.duration);
+        if (ok) {
+            const body = JSON.parse(res.body);
+            if (body.usage && body.usage.completion_tokens) {
+                c4Tokens.add(body.usage.completion_tokens);
+            }
+        }
+    }
+  {{- end }}

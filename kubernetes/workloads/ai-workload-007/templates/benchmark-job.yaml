@@ -1,0 +1,24 @@
+{{- if .Values.benchmark.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ .Values.fullnameOverride }}-bench-{{ .Values.benchmark.runId }}"
+  labels:
+    app.kubernetes.io/name: {{ .Values.fullnameOverride }}
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: k6
+          image: {{ .Values.benchmark.image | quote }}
+          command: ["k6", "run", "/scripts/benchmark.js"]
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+      volumes:
+        - name: script
+          configMap:
+            name: {{ .Values.fullnameOverride }}-k6-script
+  {{- end }}

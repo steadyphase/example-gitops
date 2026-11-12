@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.fullnameOverride }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.fullnameOverride }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.fullnameOverride }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Values.fullnameOverride }}
+    spec:
+      initContainers:
+        - name: fetch-model
+          image: "{{ .Values.inference.initImage.repository }}:{{ .Values.inference.initImage.tag }}"
+          command:
+            - sh
+            - -c
+            - |
+              if [ ! -f /models/{{ .Values.model.filename }} ]; then
+                echo "Downloading {{ .Values.model.filename }}..."
+                curl -L --fail -o /models/{{ .Values.model.filename }}.tmp {{ .Values.model.url }}
+                mv /models/{{ .Values.model.filename }}.tmp /models/{{ .Values.model.filename }}
+              else
+                echo "Model {{ .Values.model.filename }} already cached on PVC."
+              fi
+          volumeMounts:
+            - name: models
+              mountPath: /models
+      containers:
+        - name: llama-server
+          image: "{{ .Values.inference.image.repository }}:{{ .Values.inference.image.tag }}"
+          imagePullPolicy: {{ .Values.inference.image.pullPolicy }}
+          args:
+            - --model
+            - /models/{{ .Values.model.filename }}
+            - --alias
+            - {{ .Values.model.name }}
+            - --host
+            - 0.0.0.0
+            - --port
+            - {{ .Values.inference.port | quote }}
+            - --ctx-size
+            - {{ .Values.inference.ctxSize | quote }}
+            - --parallel
+            - {{ .Values.inference.parallelSlots | quote }}
+            - --cont-batching
+            - --threads
+            - {{ .Values.inference.threads | quote }}
+            - --metrics
+          ports:
+            - name: http
+              containerPort: {{ .Values.inference.port }}
+          resources:
+            {{- toYaml .Values.inference.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          volumeMounts:
+            - name: models
+              mountPath: /models
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: {{ .Values.fullnameOverride }}-weights-pvc

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: llm-inference-chart
+description: A Helm chart for GitOps Open-Weight LLM Inference and k6 Benchmarking (AI_WORKLOAD_007)
+type: application
+version: 0.1.0
+appVersion: "b4000"

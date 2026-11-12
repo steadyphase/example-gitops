@@ -1,10 +1,79 @@
-{{- if .Values.benchmark.enabled }}
+# benchmark-job.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: k6-llm-script
+  namespace: ai-workloads
+data:
+  benchmark.js: |
+    import http from 'k6/http';
+    import { check } from 'k6';
+    import { Counter, Trend } from 'k6/metrics';
+
+    const tokensGenerated = new Counter('completion_tokens_total');
+    const c1Latency = new Trend('latency_c1_ms', true);
+    const c4Latency = new Trend('latency_c4_ms', true);
+
+    export const options = {
+        scenarios: {
+            concurrency_1: {
+                executor: 'per-vu-iterations',
+                vus: 1,
+                iterations: 15,
+                maxDuration: '5m',
+                exec: 'runC1',
+            },
+            concurrency_4: {
+                executor: 'per-vu-iterations',
+                vus: 4,
+                iterations: 15, // 60 total requests across 4 parallel VUs
+                startTime: '3m', // Starts after Concurrency=1 finishes
+                maxDuration: '8m',
+                exec: 'runC4',
+            },
+        },
+        summaryTrendStats: ['avg', 'min', 'med', 'p(90)', 'p(95)', 'max'],
+    };
+
+    const url = 'http://llm-service.ai-workloads.svc.cluster.local:8080/v1/chat/completions';
+    const payload = JSON.stringify({
+        model: 'qwen2.5',
+        messages: [
+            { role: 'system', content: 'You are a concise systems engineering assistant.' },
+            { role: 'user', content: 'Explain the difference between TCP and UDP in exactly 100 words.' }
+        ],
+        max_tokens: 128,
+        temperature: 0.0,
+    });
+    const params = { headers: { 'Content-Type': 'application/json' }, timeout: '120s' };
+
+    export function runC1() {
+        const res = http.post(url, payload, params);
+        c1Latency.add(res.timings.duration);
+        recordTokens(res);
+    }
+
+    export function runC4() {
+        const res = http.post(url, payload, params);
+        c4Latency.add(res.timings.duration);
+        recordTokens(res);
+    }
+
+    function recordTokens(res) {
+        const ok = check(res, { 'status is 200': (r) => r.status === 200 });
+        if (ok) {
+            const body = JSON.parse(res.body);
+            if (body.usage && body.usage.completion_tokens) {
+                tokensGenerated.add(body.usage.completion_tokens);
+            }
+        }
+    }
+---
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: "{{ .Values.fullnameOverride }}-bench-{{ .Values.benchmark.runId }}"
-  labels:
-    app.kubernetes.io/name: {{ .Values.fullnameOverride }}
+  name: llm-benchmark
+  namespace: ai-workloads
 spec:
   backoffLimit: 0
   template:
@@ -12,7 +81,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: k6
-          image: {{ .Values.benchmark.image | quote }}
+          image: grafana/k6:0.54.0
           command: ["k6", "run", "/scripts/benchmark.js"]
           volumeMounts:
             - name: script
@@ -20,5 +89,4 @@ spec:
       volumes:
         - name: script
           configMap:
-            name: {{ .Values.fullnameOverride }}-k6-script
-  {{- end }}
+            name: k6-llm-script

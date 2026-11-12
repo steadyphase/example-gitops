@@ -28,7 +28,7 @@ inference:
       memory: "4Gi"
 
 benchmark:
-  enabled: false
+  enabled: true
   runId: "run-01" # Increment (e.g., run-02) to trigger a fresh benchmark Job via GitOps
   image: "grafana/k6:0.54.0"
   iterationsPerVu: 15

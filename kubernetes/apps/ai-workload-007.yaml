@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: 'https://github.com/steadyphase/example-gitops.git'
     targetRevision: HEAD
-    path: workloads/ai-workload-007
+    path: kubernetes/workloads/ai-workload-007
     helm:
       valueFiles:
         - values.yaml
